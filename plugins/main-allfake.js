@@ -109,6 +109,6 @@ global.icono = [
 'https://telegra.ph/file/e2f5dbd931741402527e3.jpg'
 ].getRandom()
 
-global.rcanal = { contextInfo: { isForwarded: true, forwardedNewsletterMessageInfo: { newsletterJid: "120363307382381547@newsletter", serverMessageId: 100, newsletterName: , }, externalAdReply: { showAdAttribution: true, title: textbot, body: '💥 ¡Proyecto r.a!', mediaUrl: null, description: null, previewType: "PHOTO", thumbnailUrl: icono, sourceUrl: , mediaType: 1, renderLargerThumbnail: false }, }, }}
+global.rcanal = { contextInfo: { isForwarded: true, forwardedNewsletterMessageInfo: { newsletterJid: "null", serverMessageId: 100, newsletterName: , }, externalAdReply: { showAdAttribution: true, title: textbot, body: '💥 ¡Proyecto r.a!', mediaUrl: null, description: null, previewType: "PHOTO", thumbnailUrl: icono, sourceUrl: null, mediaType: 1, renderLargerThumbnail: false }, }, }}
 
 export default handler
