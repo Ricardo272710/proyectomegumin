@@ -1,66 +1,114 @@
-import { WAMessageStubType } from '@whiskeysockets/baileys';
-import fetch from 'node-fetch';
+import {DOMImplementation, XMLSerializer} from 'xmldom';
+import JsBarcode from 'jsbarcode';
+import {JSDOM} from 'jsdom';
+import {readFileSync} from 'fs';
+import {join} from 'path';
+import {spawn} from 'child_process';
 
-export async function before(m, { conn, participants, groupMetadata }) {
-  if (!m.messageStubType || !m.isGroup) return true;
+const src = join(__dirname, '..', 'src');
+const _svg = readFileSync(join(src, 'welcome.svg'), 'utf-8');
+const barcode = (data) => {
+  const xmlSerializer = new XMLSerializer();
+  const document = new DOMImplementation().createDocument('http://www.w3.org/1999/xhtml', 'html', null);
+  const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 
-  let vn = 'https://qu.ax/cTDa.mp3';
-  let welc = welcome
-  let adi = adios
-  let chat = global.db.data.chats[m.chat];
-  
-  const getMentionedJid = () => {
-    return m.messageStubParameters.map(param => `${param}@s.whatsapp.net`);
+  JsBarcode(svgNode, data, {
+    xmlDocument: document,
+  });
+
+  return xmlSerializer.serializeToString(svgNode);
+};
+const imageSetter = (img, value) => img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', value);
+const textSetter = (el, value) => el.textContent = value;
+
+const {document: svg} = new JSDOM(_svg).window;
+/**
+ * Generate SVG Welcome
+ * @param {object} param0
+ * @param {string} param0.wid
+ * @param {string} param0.pp
+ * @param {string} param0.name
+ * @param {string} param0.text
+ * @param {string} param0.background
+ * @return {string}
+ */
+const genSVG = async ({
+  wid = '',
+  pp = join(src, 'avatar_contact.png'),
+  title = '',
+  name = '',
+  text = '',
+  background = '',
+} = {}) => {
+  const el = {
+    code: ['#_1661899539392 > g:nth-child(6) > image', imageSetter, toBase64(await toImg(barcode(wid.replace(/[^0-9]/g, '')), 'png'), 'image/png')],
+    pp: ['#_1661899539392 > g:nth-child(3) > image', imageSetter, pp],
+    text: ['#_1661899539392 > text.fil1.fnt0', textSetter, text],
+    title: ['#_1661899539392 > text.fil2.fnt1', textSetter, title],
+    name: ['#_1661899539392 > text.fil2.fnt2', textSetter, name],
+    bg: ['#_1661899539392 > g:nth-child(2) > image', imageSetter, background],
   };
-
-  if (chat.welcome && m.messageStubType === 27) {
-    this.sendMessage(m.chat, {
-      audio: { url: vn },
-      contextInfo: {
-        mentionedJid: getMentionedJid(),
-        "externalAdReply": {
-          "thumbnail": welc,
-          "title": "  ͟͞ Ｗ Ｅ Ｌ Ｃ Ｏ Ｍ Ｅ ͟͞  ",
-          "body": dev,
-          "previewType": "PHOTO",
-          "thumbnailUrl": null,
-          "showAdAttribution": true,
-          sourceUrl: [ yt, md, channel].sort(() => 0.5 - Math.random())[0]
-        }
-      },
-      ptt: true,
-      mimetype: 'audio/mpeg',
-      fileName: 'error.mp3'
-    }, { quoted: fkontak });
+  for (const [selector, set, value] of Object.values(el)) {
+    set(svg.querySelector(selector), value);
   }
+  return svg.body.innerHTML;
+};
 
-  if (chat.welcome && (m.messageStubType === 28 || m.messageStubType === 32)) {
-    const mentionedJid = m.messageStubParameters[0];
-    const userTag = '@' + m.sender.split('@s.whatsapp.net')[0];
+const toImg = (svg, format = 'png') => new Promise((resolve, reject) => {
+  if (!svg) return resolve(Buffer.alloc(0));
+  const bufs = [];
+  const im = spawn('magick', ['convert', 'svg:-', format + ':-']);
+  im.on('error', (e) => reject(e));
+  im.stdout.on('data', (chunk) => bufs.push(chunk));
+  im.stdin.write(Buffer.from(svg));
+  im.stdin.end();
+  im.on('close', (code) => {
+    if (code !== 0) reject(code);
+    resolve(Buffer.concat(bufs));
+  });
+});
 
-    const text = `Se fue ${userTag} nadie lo va a extrañar 😹`;
+const toBase64 = (buffer, mime) => `data:${mime};base64,${buffer.toString('base64')}`;
 
-    this.sendMessage(m.chat, {
-        text: text,
-        contextInfo: {
-            mentionedJid: [mentionedJid],
-            forwardedNewsletterMessageInfo: {
-                newsletterJid: '120363307382381547@newsletter',
-                serverMessageId: '',
-                newsletterName: '⏤͟͞ू⃪ ፝͜⁞M͢ᴇɢ፝֟ᴜᴍ⃨ɪɴ⃜✰⃔࿐/♡ ͟͞ 𓆩ꪶꪾ𝘿᪶𝙞ᷨ𝙢ᷞ𝙤᪶ͨ𝙣ᷜ𝙙ꫂৎ୭࠱࠭ ͟͞'
-            },
-            forwardingScore: 9999999,
-            isForwarded: true,
-            "externalAdReply": {
-                "showAdAttribution": true,
-                "containsAutoReply": true,
-                "title": '  ͟͞ Ａ Ｄ Ｉ Ｏ́ Ｓ ͟͞  ',
-                body: 'Esperemos que no vuelva -_-',
-                "previewType": "PHOTO",
-                "thumbnailUrl": '',
-                "thumbnail": adi,
-                "sourceUrl": redes
-            }
-        }
-    }, { quoted: null, ephemeralExpiration: 24 * 60 * 100, disappearingMessagesInChat: 24 * 60 * 100 });
-}
+/**
+ * Render SVG Welcome
+ * @param {object} param0
+ * @param {string} param0.wid
+ * @param {string} param0.pp
+ * @param {string} param0.name
+ * @param {string} param0.text
+ * @param {string} param0.background
+ * @return {Promise<Buffer>}
+ */
+const render = async ({
+  wid = '',
+  pp = toBase64(readFileSync(join(src, 'avatar_contact.png')), 'image/png'),
+  name = '',
+  title = '',
+  text = '',
+  background = toBase64(readFileSync(join(src, 'Aesthetic', 'Aesthetic_000.jpeg')), 'image/jpeg'),
+} = {}, format = 'png') => {
+  const svg = await genSVG({
+    wid, pp, name, text, background, title,
+  });
+  return await toImg(svg, format);
+};
+
+if (require.main === module) {
+  render({
+    wid: '1234567890',
+    // pp: '',
+    name: 'John Doe',
+    text: 'Lorem ipsum\ndot sit color',
+    title: 'grup testing',
+    // background: ''
+  }, 'jpg').then((result) => {
+    // console.log(result)
+    process.stdout.write(result);
+  });
+  // toImg(barcode('test')).then(result => {
+  //     // console.log(result)
+  //     process.stdout.write(result)
+
+  // })
+} else module.exports = render;
